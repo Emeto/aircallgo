@@ -7,8 +7,8 @@ import (
 )
 
 type Config struct {
-	ID    string `json:"ID"`
-	Token string `json:"Token"`
+	ID    string `json:"id"`
+	Token string `json:"token"`
 }
 
 func ParseConfig() *Config {
