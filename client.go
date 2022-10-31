@@ -25,6 +25,9 @@ func newClient() *Client[any] {
 
 func (c *Client[any]) MakeRequest(endpoint string, method string, payload *bytes.Reader) any {
 	var data any
+	if payload == nil {
+		payload = bytes.NewReader(make([]byte, 0)) // If no payload is passed (i.e. GET requests), initialize an empty Reader
+	}
 	req, _ := http.NewRequest(method, c.buildEndpoint(endpoint), payload)
 	req.Header.Set("Content-Type", "application/json")
 	res, err := c.HTTPClient.Do(req)
