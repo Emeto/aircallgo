@@ -29,6 +29,16 @@ type Users struct {
 	Users []User `json:"users"`
 }
 
+type UsersAvailabilities struct {
+	Meta  Meta               `json:"meta"`
+	Users []UserAvailability `json:"users"`
+}
+
+type UserAvailability struct {
+	ID           int64  `json:"id"`
+	Availability string `json:"availability"`
+}
+
 type createUserPayload struct {
 	email              string
 	firstName          string
@@ -46,13 +56,13 @@ type updateUserPayload struct {
 func GetUser(UserID int64) *User {
 	client := (*Client[User])(newClient())
 	user := client.MakeRequest("users/"+strconv.FormatInt(UserID, 10), http.MethodGet, nil)
-	return &user
+	return &user.data
 }
 
 func GetUsers() *Users {
 	client := (*Client[Users])(newClient())
 	users := client.MakeRequest("users", http.MethodGet, nil)
-	return &users
+	return &users.data
 }
 
 func CreateUser(Email string, FirstName string, LastName string, AvailabilityStatus string, IsAdmin bool) *User {
@@ -85,7 +95,7 @@ func CreateUser(Email string, FirstName string, LastName string, AvailabilitySta
 	}
 	r := bytes.NewReader(payload)
 	user := client.MakeRequest("users", http.MethodPost, r)
-	return &user
+	return &user.data
 }
 
 func UpdateUser(UserID int64, FirstName string, LastName string, AvailabilityStatus string) *User {
@@ -103,10 +113,57 @@ func UpdateUser(UserID int64, FirstName string, LastName string, AvailabilitySta
 		availabilityStatus: AvailabilityStatus,
 	})
 	if err != nil {
-		fmt.Fprint(os.Stderr, "aircallgo(CreateUser): unable to marshal json payload")
+		fmt.Fprint(os.Stderr, "aircallgo(UpdateUser): unable to marshal json payload")
 		panic(err)
 	}
 	r := bytes.NewReader(payload)
 	user := client.MakeRequest("users/"+strconv.FormatInt(UserID, 10), http.MethodPut, r)
-	return &user
+	return &user.data
+}
+
+func DeleteUser(UserID int64) bool {
+	if UserID == 0 {
+		fmt.Fprint(os.Stderr, "aircallgo(DeleteUser): target user ID cannot be 0")
+	}
+	client := newClient()
+	res := client.MakeRequest("users", http.MethodDelete, nil)
+	return res.StatusCode == http.StatusNoContent
+}
+
+func GetAvailabilities() *UsersAvailabilities {
+	client := (*Client[UsersAvailabilities])(newClient())
+	ua := client.MakeRequest("users/availabilities", http.MethodGet, nil)
+	return &ua.data
+}
+
+func GetAvailabilitiesWithFilters(From string, To string, Order string) *UsersAvailabilities {
+	es := "users/availabilities?"
+	if len(From) > 0 {
+		es += "from=" + From
+	}
+	if len(To) > 0 {
+		if len(From) > 0 {
+			es += "&"
+		}
+		es += "to=" + To
+	}
+	if len(Order) > 0 {
+		if len(From) > 0 || len(To) > 0 {
+			es += "&"
+		}
+		es += "order=" + Order
+	}
+	client := (*Client[UsersAvailabilities])(newClient())
+	ua := client.MakeRequest(es, http.MethodGet, nil)
+	return &ua.data
+}
+
+func GetUserAvailability(UserID int64) *struct {
+	Availability string `json:"availability"`
+} {
+	client := (*Client[struct {
+		Availability string `json:"availability"`
+	}])(newClient())
+	ua := client.MakeRequest("users/"+strconv.FormatInt(UserID, 10)+"/availability", http.MethodGet, nil)
+	return &ua.data
 }
