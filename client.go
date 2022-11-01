@@ -16,6 +16,12 @@ type Client[E any] struct {
 	HTTPClient http.Client
 }
 
+type ClientResponse[E any] struct {
+	Status     string
+	StatusCode int
+	data       E
+}
+
 func newClient() *Client[any] {
 	return &Client[any]{
 		config:     ParseConfig(),
@@ -23,10 +29,11 @@ func newClient() *Client[any] {
 	}
 }
 
-func (c *Client[any]) MakeRequest(endpoint string, method string, payload *bytes.Reader) any {
-	var data any
+func (c *Client[any]) MakeRequest(endpoint string, method string, payload *bytes.Reader) *ClientResponse[any] {
+	var response ClientResponse[any]
+	// If no payload is passed (i.e. GET requests), initialize an empty Reader
 	if payload == nil {
-		payload = bytes.NewReader(make([]byte, 0)) // If no payload is passed (i.e. GET requests), initialize an empty Reader
+		payload = bytes.NewReader(make([]byte, 0))
 	}
 	req, _ := http.NewRequest(method, c.buildEndpoint(endpoint), payload)
 	req.Header.Set("Content-Type", "application/json")
@@ -34,21 +41,24 @@ func (c *Client[any]) MakeRequest(endpoint string, method string, payload *bytes
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error making http request: %s\n", err)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
+	response.Status = res.Status
+	if res.StatusCode == http.StatusNoContent {
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				log.Fatal("unable to close response body")
+			}
+		}(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
-			log.Fatal("unable to close response body")
+			fmt.Fprintf(os.Stderr, "error reading HTTP response: %s\n", err)
 		}
-	}(res.Body)
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error reading HTTP response: %s\n", err)
+		err = json.Unmarshal(body, &response.data)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not parse JSON response: %s\n", err)
+		}
 	}
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not parse JSON response: %s\n", err)
-	}
-	return data
+	return &response
 }
 
 func (c *Client[any]) buildEndpoint(uri string) string {
