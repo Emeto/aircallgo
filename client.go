@@ -42,7 +42,7 @@ func (c *Client[any]) MakeRequest(endpoint string, method string, payload *bytes
 		fmt.Fprintf(os.Stderr, "error making http request: %s\n", err)
 	}
 	response.Status = res.Status
-	if res.StatusCode == http.StatusNoContent {
+	if res.StatusCode != http.StatusNoContent {
 		defer func(Body io.ReadCloser) {
 			err := Body.Close()
 			if err != nil {
