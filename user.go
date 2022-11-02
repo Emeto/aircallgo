@@ -65,12 +65,17 @@ func GetUser(UserID int64) *User {
 	return &user.data
 }
 
+// GetUsers retrieves all users and returns Users
 func GetUsers() *Users {
 	client := (*Client[Users])(newClient())
 	users := client.MakeRequest("users", http.MethodGet, nil)
 	return &users.data
 }
 
+// CreateUser adds a user to the Aircall instance and sends an email invitation
+// to passed Email parameter. Email, FirstName and LastName are mandatory and
+// cannot be empty strings. AvailabilityStatus should be one of "available",
+// "custom" or "unavailable". Returns a User on success.
 func CreateUser(Email string, FirstName string, LastName string, AvailabilityStatus string, IsAdmin bool) *User {
 	if len(Email) == 0 {
 		fmt.Fprint(os.Stderr, "aircallgo(CreateUser): Email cannot be empty")
@@ -104,6 +109,8 @@ func CreateUser(Email string, FirstName string, LastName string, AvailabilitySta
 	return &user.data
 }
 
+// UpdateUser updates a user. Returns a User on success.
+// AvailabilityStatus should be one of "available", "custom", "unavailable".
 func UpdateUser(UserID int64, FirstName string, LastName string, AvailabilityStatus string) *User {
 	if UserID == 0 {
 		fmt.Fprint(os.Stderr, "aircallgo(UpdateUser): target user ID cannot be 0")
@@ -127,6 +134,7 @@ func UpdateUser(UserID int64, FirstName string, LastName string, AvailabilitySta
 	return &user.data
 }
 
+// DeleteUser removes a user from the Aircall instance. Returns true on success, false otherwise.
 func DeleteUser(UserID int64) bool {
 	if UserID == 0 {
 		fmt.Fprint(os.Stderr, "aircallgo(DeleteUser): target user ID cannot be 0")
@@ -136,12 +144,16 @@ func DeleteUser(UserID int64) bool {
 	return res.StatusCode == http.StatusNoContent
 }
 
+// GetAvailabilities retrives all users' availabilities. Returns UsersAvailabilities on success.
 func GetAvailabilities() *UsersAvailabilities {
 	client := (*Client[UsersAvailabilities])(newClient())
 	ua := client.MakeRequest("users/availabilities", http.MethodGet, nil)
 	return &ua.data
 }
 
+// GetAvailabilitiesWithFilters is the same as the GetAvailabilities method
+// but with filter parameters. From and To parameters should be in a UNIX
+// timestamp format and Order should be either of "asc" or "desc".
 func GetAvailabilitiesWithFilters(From string, To string, Order string) *UsersAvailabilities {
 	es := "users/availabilities?"
 	if len(From) > 0 {
@@ -164,6 +176,7 @@ func GetAvailabilitiesWithFilters(From string, To string, Order string) *UsersAv
 	return &ua.data
 }
 
+// GetUserAvailability retrieves a single user availability.
 func GetUserAvailability(UserID int64) *struct {
 	Availability string `json:"availability"`
 } {
