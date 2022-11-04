@@ -58,6 +58,10 @@ type outboundCallPayload struct {
 	to       string
 }
 
+type dialPayload struct {
+	to string
+}
+
 // GetUser retrieves a single user and returns a User
 func GetUser(UserID int64) *User {
 	client := (*Client[User])(newClient())
@@ -188,6 +192,7 @@ func GetUserAvailability(UserID int64) *struct {
 }
 
 // StartOutboundCall starts an outbound call on the Aircall softphone linked to the user from UserID.
+// To must be a phone number in E.164 international format.
 // Returns true on success, false otherwise.
 func StartOutboundCall(UserID int64, NumberID int64, To string) bool {
 	if UserID == 0 {
@@ -210,5 +215,27 @@ func StartOutboundCall(UserID int64, NumberID int64, To string) bool {
 	}
 	r := bytes.NewReader(payload)
 	res := client.MakeRequest("users/"+strconv.FormatInt(UserID, 10)+"/calls", http.MethodPost, r)
+	return res.StatusCode == http.StatusNoContent
+}
+
+// Dial a number directly to the targeted user aircall phone
+// To must be a phone number in E.164 international format
+func Dial(UserID int64, To string) bool {
+	if len(To) == 0 {
+		fmt.Fprint(os.Stderr, "aircallgo(Dial): 'to' parameter cannot be an empty string")
+	}
+	if UserID == 0 {
+		fmt.Fprint(os.Stderr, "aircallgo(Dial): target user ID cannot be 0")
+	}
+	client := newClient()
+	payload, err := json.Marshal(dialPayload{
+		to: To,
+	})
+	if err != nil {
+		fmt.Fprint(os.Stderr, "aircallgo(Dial): unable to marshal json payload")
+		panic(err)
+	}
+	r := bytes.NewReader(payload)
+	res := client.MakeRequest("users/"+strconv.FormatInt(UserID, 10)+"/dial", http.MethodPost, r)
 	return res.StatusCode == http.StatusNoContent
 }
